@@ -78,6 +78,20 @@ export const sendMessageToGemini = async (
     postambleForAllDocs = `\n\n上記の資料を踏まえ、「${categoryPromptContext}」という文脈で、次の質問に回答してください：`;
   }
 
+  // 退職届のフォーマット質問かどうかを検出
+  const isRetirementFormatQuery = messageText.includes('退職届') && (
+    messageText.includes('フォーマット') || 
+    messageText.includes('書き方') || 
+    messageText.includes('テンプレート') || 
+    messageText.includes('書式') ||
+    messageText.includes('形式') ||
+    messageText.includes('見本') ||
+    messageText.includes('例')
+  );
+
+  if (isRetirementFormatQuery) {
+    postambleForAllDocs += `\n\n※この質問は退職届のフォーマットに関するものです。資料に含まれている具体的なテンプレートやフォーマット例を詳細に提供してください。`;
+  }
 
   // Calculate available characters for documents
   const userQueryLength = (categoryPromptContext ? categoryPromptContext.length + 2 : 0) + messageText.length;
