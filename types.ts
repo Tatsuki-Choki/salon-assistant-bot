@@ -1,4 +1,3 @@
-
 export enum MessageSender {
   USER = 'user',
   BOT = 'bot',
@@ -12,12 +11,19 @@ export interface Category {
   promptContext: string; // Specific context/instruction for this category to prepend to user query
 }
 
+export interface QuestionSuggestion {
+  id: string;
+  text: string;
+  categoryId?: string; // Optional: related category
+}
+
 export interface Message {
   id: string;
   text: string;
   sender: MessageSender;
   timestamp: Date;
   categoryContext?: string; // Optional: context of the category selected when message was sent/received
+  suggestions?: QuestionSuggestion[]; // Optional: question suggestions for bot messages
 }
 
 export interface GroundingChunk {

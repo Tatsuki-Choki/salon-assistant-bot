@@ -1,13 +1,19 @@
 import React from 'react';
 import { Message, MessageSender } from '../types';
 import LoadingSpinner from './LoadingSpinner'; // Import LoadingSpinner
+import QuestionSuggestionComponent from './QuestionSuggestion';
 
 interface MessageBubbleProps {
   message: Message;
   currentBotMessageId?: string | null; // Added to identify the bot message being loaded
+  onSuggestionClick?: (suggestionText: string) => void; // Added for suggestion handling
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, currentBotMessageId }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ 
+  message, 
+  currentBotMessageId, 
+  onSuggestionClick 
+}) => {
   const isUser = message.sender === MessageSender.USER;
   const isBot = message.sender === MessageSender.BOT;
   const isSystem = message.sender === MessageSender.SYSTEM;
@@ -56,7 +62,17 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, currentBotMessag
             <LoadingSpinner />
           </div>
         ) : (
-          <p className="text-sm leading-relaxed" dangerouslySetInnerHTML={formatText(message.text)}></p>
+          <>
+            <p className="text-sm leading-relaxed" dangerouslySetInnerHTML={formatText(message.text)}></p>
+            
+            {/* 質問候補の表示（ボットメッセージのみ） */}
+            {isBot && message.suggestions && message.suggestions.length > 0 && onSuggestionClick && (
+              <QuestionSuggestionComponent
+                suggestions={message.suggestions}
+                onSuggestionClick={onSuggestionClick}
+              />
+            )}
+          </>
         )}
         
         { /* Only show timestamp if not loading or if there's text */ }

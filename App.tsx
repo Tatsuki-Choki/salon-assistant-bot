@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Message, MessageSender, Category } from './types';
+import { Message, MessageSender, Category, QuestionSuggestion } from './types';
 import { 
   INITIAL_SYSTEM_MESSAGE_TEXT, 
   APP_NAME, 
@@ -19,6 +18,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [currentBotMessageId, setCurrentBotMessageId] = useState<string | null>(null);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
+  const [showCategories, setShowCategories] = useState<boolean>(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +46,22 @@ const App: React.FC = () => {
 
   const handleCategorySelect = (category: Category) => {
     if (isLoading) return;
+    
+    // カテゴリの選択解除機能
+    if (currentCategory?.id === category.id) {
+      setCurrentCategory(null);
+      // カテゴリ解除のシステムメッセージを削除
+      setMessages((prevMessages: Message[]) => {
+        const filteredMessages = prevMessages.filter((msg: Message) => 
+          !(msg.sender === MessageSender.SYSTEM && msg.text.startsWith(CATEGORY_SELECTED_MESSAGE_PREFIX))
+        );
+        return filteredMessages.length === 0 
+          ? [{id: `init-${Date.now()}`, text: INITIAL_SYSTEM_MESSAGE_TEXT, sender: MessageSender.SYSTEM, timestamp: new Date()}]
+          : filteredMessages;
+      });
+      return;
+    }
+
     setCurrentCategory(category);
     const systemMessageText = `${CATEGORY_SELECTED_MESSAGE_PREFIX}${category.label}${CATEGORY_SELECTED_MESSAGE_SUFFIX}`;
     const systemMessage: Message = {
@@ -56,11 +72,11 @@ const App: React.FC = () => {
       categoryContext: category.label
     };
     
-    setMessages(prevMessages => {
-        const filteredMessages = prevMessages.filter(msg => 
+    setMessages((prevMessages: Message[]) => {
+        const filteredMessages = prevMessages.filter((msg: Message) => 
             !(msg.sender === MessageSender.SYSTEM && msg.text.startsWith(CATEGORY_SELECTED_MESSAGE_PREFIX))
         );
-        const messagesWithoutOldSelections = filteredMessages.length === 0 && !prevMessages.find(m => m.text === INITIAL_SYSTEM_MESSAGE_TEXT)
+        const messagesWithoutOldSelections = filteredMessages.length === 0 && !prevMessages.find((m: Message) => m.text === INITIAL_SYSTEM_MESSAGE_TEXT)
             ? [{id: `init-${Date.now()}`, text: INITIAL_SYSTEM_MESSAGE_TEXT, sender: MessageSender.SYSTEM, timestamp: new Date()}]
             : filteredMessages;
 
@@ -68,12 +84,22 @@ const App: React.FC = () => {
     });
   };
 
-  const handleSendMessage = async () => {
-    if (!userInput.trim() || isLoading) return;
+  // 質問候補がクリックされた時の処理
+  const handleSuggestionClick = (suggestionText: string) => {
+    setUserInput(suggestionText);
+    // 自動的に質問を送信
+    setTimeout(() => {
+      handleSendMessage(suggestionText);
+    }, 100);
+  };
+
+  const handleSendMessage = async (messageText?: string) => {
+    const textToSend = messageText || userInput;
+    if (!textToSend.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: userInput,
+      text: textToSend,
       sender: MessageSender.USER,
       timestamp: new Date(),
       categoryContext: currentCategory?.label,
@@ -95,26 +121,30 @@ const App: React.FC = () => {
         timestamp: new Date(),
         categoryContext: currentCategory?.label,
     };
-    setMessages(prev => [...prev, botPlaceholderMessage]);
+    setMessages((prev: Message[]) => [...prev, botPlaceholderMessage]);
 
 
     const historyForGemini = updatedMessagesWithUser; // Pass messages before bot placeholder
 
     await sendMessageToGemini(
-      userInput,
+      textToSend,
       historyForGemini,
       currentCategory?.promptContext ?? null,
       (chunkText) => { 
-        setMessages(prev => prev.map(msg => 
+        setMessages((prev: Message[]) => prev.map((msg: Message) => 
           msg.id === botMessageId ? { ...msg, text: msg.text + chunkText } : msg
         ));
       },
-      () => { 
+      (suggestions?: QuestionSuggestion[]) => { 
+        // 最終的な回答に質問候補を追加
+        setMessages((prev: Message[]) => prev.map((msg: Message) => 
+          msg.id === botMessageId ? { ...msg, suggestions: suggestions || [] } : msg
+        ));
         setIsLoading(false);
         setCurrentBotMessageId(null); // Clear current bot message ID
       },
       (error) => { 
-        setMessages(prev => prev.map(msg => 
+        setMessages((prev: Message[]) => prev.map((msg: Message) => 
           msg.id === botMessageId ? { ...msg, text: `エラーが発生しました: ${error.message}` } : msg
         ));
         setIsLoading(false);
@@ -130,6 +160,10 @@ const App: React.FC = () => {
     setCurrentBotMessageId(null);
   };
 
+  const toggleCategories = () => {
+    setShowCategories(!showCategories);
+  };
+
   const isInputAreaDisabled = isLoading;
   const inputPlaceholder = currentCategory 
     ? `「${currentCategory.label}」について質問...` 
@@ -137,7 +171,8 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen max-w-2xl mx-auto bg-gray-50 shadow-2xl">
-      <header className="bg-pink-500 text-white p-4 text-center shadow-md">
+      {/* 固定ヘッダー */}
+      <header className="fixed top-0 left-1/2 transform -translate-x-1/2 w-full max-w-2xl bg-pink-500 text-white p-4 text-center shadow-md z-10">
         <h1 className="text-xl font-bold flex items-center justify-center">
           {APP_NAME}
         </h1>
@@ -146,62 +181,103 @@ const App: React.FC = () => {
         )}
       </header>
 
-      <main className="flex-grow p-4 overflow-y-auto bg-gray-100">
-        {messages.map(msg => (
-          <MessageBubble 
-            key={msg.id} 
-            message={msg} 
-            currentBotMessageId={currentBotMessageId} // Pass currentBotMessageId
-          />
-        ))}
-        {/* This global spinner might show very briefly before currentBotMessageId is set */}
-        {isLoading && !messages.find(m => m.id === currentBotMessageId && m.sender === MessageSender.BOT) && 
-          <div className="flex justify-start mb-3"><LoadingSpinner /></div>
-        }
-        <div ref={messagesEndRef} />
+      {/* メインチャットエリア（上下に余白を設けてスクロール可能） */}
+      <main className="flex-grow overflow-y-auto bg-gray-100 pt-20 pb-32">
+        <div className="p-4">
+          {messages.map(msg => (
+            <MessageBubble 
+              key={msg.id} 
+              message={msg} 
+              currentBotMessageId={currentBotMessageId}
+              onSuggestionClick={handleSuggestionClick}
+            />
+          ))}
+          {/* This global spinner might show very briefly before currentBotMessageId is set */}
+          {isLoading && !messages.find(m => m.id === currentBotMessageId && m.sender === MessageSender.BOT) && 
+            <div className="flex justify-start mb-3"><LoadingSpinner /></div>
+          }
+          <div ref={messagesEndRef} />
+        </div>
       </main>
       
-      <footer className="p-4 border-t border-gray-200 bg-white shadow-inner">
-        <div className="mb-3">
-          <div className="flex flex-wrap justify-center items-center gap-2">
-            {CATEGORIES.map(cat => (
-              <CategoryButton 
-                key={cat.id} 
-                category={cat} 
-                onSelect={handleCategorySelect}
-                isSelected={currentCategory?.id === cat.id}
-              />
-            ))}
+      {/* 固定フッター */}
+      <footer className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-2xl bg-white border-t border-gray-200 shadow-inner z-10">
+        {/* カテゴリエリア（条件付き表示） */}
+        {showCategories && (
+          <div className="px-4 py-3 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              {/* カテゴリボタン群 */}
+              <div className="flex flex-wrap justify-center items-center gap-2 flex-1">
+                {CATEGORIES.map(cat => (
+                  <CategoryButton 
+                    key={cat.id} 
+                    category={cat} 
+                    onSelect={handleCategorySelect}
+                    isSelected={currentCategory?.id === cat.id}
+                  />
+                ))}
+              </div>
+              
+              {/* カテゴリ隠すボタン */}
+              <button
+                onClick={toggleCategories}
+                className="ml-3 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors duration-200 flex-shrink-0"
+                aria-label="カテゴリを隠す"
+                title="カテゴリを隠す"
+              >
+                <i className="fas fa-chevron-down"></i>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* カテゴリが隠れている時の表示ボタン */}
+        {!showCategories && (
+          <div className="px-4 pt-2">
+            <button
+              onClick={toggleCategories}
+              className="w-full p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200 text-sm flex items-center justify-center gap-2"
+              aria-label="カテゴリを表示"
+            >
+              <i className="fas fa-chevron-up"></i>
+              カテゴリを表示
+            </button>
+          </div>
+        )}
+
+        {/* 入力エリア */}
+        <div className="p-4">
+          <div className="flex items-center space-x-2">
+            <input
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && !isInputAreaDisabled && handleSendMessage()}
+              placeholder={inputPlaceholder}
+              className="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-shadow disabled:bg-gray-100 disabled:cursor-not-allowed"
+              disabled={isInputAreaDisabled}
+              aria-label="質問入力"
+            />
+            <button
+              onClick={() => handleSendMessage()}
+              disabled={isInputAreaDisabled || !userInput.trim()}
+              className="p-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 disabled:bg-pink-300 disabled:cursor-not-allowed transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50"
+              aria-label="送信"
+            >
+              <i className="fas fa-paper-plane"></i>
+            </button>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <input
-            type="text"
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && !isInputAreaDisabled && handleSendMessage()}
-            placeholder={inputPlaceholder}
-            className="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-shadow disabled:bg-gray-100 disabled:cursor-not-allowed"
-            disabled={isInputAreaDisabled}
-            aria-label="質問入力"
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={isInputAreaDisabled || !userInput.trim()}
-            className="p-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 disabled:bg-pink-300 disabled:cursor-not-allowed transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50"
-            aria-label="送信"
-          >
-            <i className="fas fa-paper-plane"></i>
-          </button>
-        </div>
-      </footer>
-       <button 
+
+        {/* リセットボタン */}
+        <button 
           onClick={handleResetConversation}
           className="w-full p-2 bg-red-500 text-white hover:bg-red-600 transition-colors text-sm"
           aria-label="ホームに戻り会話をリセット"
         >
           <i className="fas fa-home mr-1"></i> ホームに戻る
         </button>
+      </footer>
     </div>
   );
 };
