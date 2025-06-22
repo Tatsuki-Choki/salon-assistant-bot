@@ -16,6 +16,7 @@ const getAIInstance = (): GoogleGenAI => {
   return ai;
 };
 
+
 // 質問候補を解析・抽出する関数
 const extractSuggestions = (responseText: string): QuestionSuggestion[] => {
   const suggestionMatch = responseText.match(/---SUGGESTIONS---([\s\S]*?)---END_SUGGESTIONS---/);
@@ -78,20 +79,42 @@ export const sendMessageToGemini = async (
     postambleForAllDocs = `\n\n上記の資料を踏まえ、「${categoryPromptContext}」という文脈で、次の質問に回答してください：`;
   }
 
-  // 退職届のフォーマット質問かどうかを検出
-  const isRetirementFormatQuery = messageText.includes('退職届') && (
-    messageText.includes('フォーマット') || 
-    messageText.includes('書き方') || 
-    messageText.includes('テンプレート') || 
-    messageText.includes('書式') ||
-    messageText.includes('形式') ||
-    messageText.includes('見本') ||
-    messageText.includes('例')
-  );
+  // 各種テンプレカテゴリーの場合の特別処理
+  const isTemplateFormatCategory = categoryPromptContext?.includes('各種テンプレ');
+  if (isTemplateFormatCategory && messageText.trim() === '') {
+    // カテゴリー選択直後（空の質問）の場合、テンプレート選択サジェストを提供
+    postambleForAllDocs += `\n\n※各種テンプレカテゴリーが選択されました。どのテンプレートが必要ですか？
 
-  if (isRetirementFormatQuery) {
-    postambleForAllDocs += `\n\n※この質問は退職届のフォーマットに関するものです。資料に含まれている具体的なテンプレートやフォーマット例を詳細に提供してください。`;
+---SUGGESTIONS---
+・退職届（基本フォーマット）
+・退職届（感謝の一文入り）
+・退職届（スタイリスト特化版）
+・退職届（家庭の事情版）
+・退職届（結婚・出産関連版）
+・退職届（郵送用添え状）
+---END_SUGGESTIONS---`;
+  } else if (isTemplateFormatCategory && messageText.includes('退職届')) {
+    // 特定のテンプレートが選択された場合、該当するテンプレートのみを出力
+    let templateType = '';
+    if (messageText.includes('基本フォーマット')) {
+      templateType = '基本フォーマット①　シンプル版';
+    } else if (messageText.includes('感謝の一文入り')) {
+      templateType = '基本フォーマット②　感謝の一文入り';
+    } else if (messageText.includes('スタイリスト特化版')) {
+      templateType = 'スタイリスト特化版　顧客対応への配慮含む';
+    } else if (messageText.includes('家庭の事情版')) {
+      templateType = '家庭の事情版';
+    } else if (messageText.includes('結婚・出産関連版')) {
+      templateType = '結婚・出産関連版';
+    } else if (messageText.includes('郵送用添え状')) {
+      templateType = '郵送用添え状';
+    }
+
+    if (templateType) {
+      postambleForAllDocs += `\n\n※${templateType}のテンプレートを提供してください。資料から該当する【${templateType}】の部分のみを抽出し、テンプレート内容のみを表示してください。説明文やコメントは一切含めず、純粋にテンプレートのフォーマットのみを回答してください。`;
+    }
   }
+
 
   // Calculate available characters for documents
   const userQueryLength = (categoryPromptContext ? categoryPromptContext.length + 2 : 0) + messageText.length;

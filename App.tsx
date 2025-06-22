@@ -82,6 +82,13 @@ const App: React.FC = () => {
 
         return [...messagesWithoutOldSelections, systemMessage];
     });
+
+    // 各種テンプレカテゴリーの場合は自動的にサジェストを表示
+    if (category.id === 'template_formats') {
+      setTimeout(() => {
+        handleSendMessage('');
+      }, 100);
+    }
   };
 
   // 質問候補がクリックされた時の処理

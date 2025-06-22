@@ -53,6 +53,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     }
   };
 
+
   const isActiveBotPlaceholder =
     isBot &&
     message.id === currentBotMessageId &&
@@ -95,10 +96,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                       ? 'bg-green-100 text-green-700 border border-green-300' 
                       : 'bg-blue-50 text-blue-700 border border-blue-300 hover:bg-blue-100'
                   }`}
-                  title={isCopied ? 'コピーしました！' : '回答のテキストをコピー'}
+                  title={isCopied ? 'コピーしました！' : 'テキストをコピー'}
                 >
                   <i className={`fas ${isCopied ? 'fa-check' : 'fa-copy'} mr-2`}></i>
-                  {isCopied ? 'コピーしました！' : '回答のテキストをコピー'}
+                  {isCopied ? 'コピーしました！' : 'テキストをコピー'}
                 </button>
               </div>
             )}

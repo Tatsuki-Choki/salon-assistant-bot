@@ -20,6 +20,12 @@ icon: 'fas fa-kit-medical',
 promptContext: '緊急時の対応について質問です。',
 },
 {
+id: 'template_formats',
+label: '各種テンプレ',
+icon: 'fas fa-file-alt',
+promptContext: '各種テンプレについて質問です。',
+},
+{
 id: 'other_faq',
 label: 'その他FAQ',
 icon: 'fas fa-question-circle',
