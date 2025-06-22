@@ -25,9 +25,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     ? 'bg-gray-200 text-gray-800'
     : 'bg-slate-100 text-slate-700 border border-slate-300';
   
-  const textAlign = isSystem ? 'text-center' : isUser ? 'text-right' : 'text-left';
   const wrapperClasses = `flex ${bubbleAlignment} mb-3 animate-fadeIn`;
-  const bubbleClasses = `max-w-xs md:max-w-md lg:max-w-lg px-4 py-3 rounded-xl shadow-md ${bubbleColor} ${textAlign}`;
+  const bubbleClasses = `max-w-xs md:max-w-md lg:max-w-lg px-4 py-3 rounded-xl shadow-md ${bubbleColor}`;
   
   const formatText = (text: string) => {
     let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -63,7 +62,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         ) : (
           <>
-            <p className="text-sm leading-relaxed" dangerouslySetInnerHTML={formatText(message.text)}></p>
+            <p 
+              className="text-sm leading-relaxed text-left" 
+              dangerouslySetInnerHTML={formatText(message.text)}
+            ></p>
             
             {/* 質問候補の表示（ボットメッセージのみ） */}
             {isBot && message.suggestions && message.suggestions.length > 0 && onSuggestionClick && (
@@ -77,9 +79,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         
         { /* Only show timestamp if not loading or if there's text */ }
         {(!isActiveBotPlaceholder || message.text.trim()) && (
-            <p className="text-xs mt-2 opacity-75">
+          <p className="text-xs mt-2 opacity-75 text-left">
             {message.timestamp.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
-            </p>
+          </p>
         )}
       </div>
     </div>
