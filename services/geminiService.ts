@@ -118,6 +118,7 @@ export const sendMessageToGemini = async (
   const messagePayload: Part[] = [{ text: contextPartText + "\n" + finalMessageText }];
 
   let fullResponseText = '';
+  let displayedText = '';
 
   try {
     const result = await chat.sendMessageStream({ message: messagePayload });
@@ -125,13 +126,23 @@ export const sendMessageToGemini = async (
       const chunkText = chunk.text;
       if (chunkText) {
         fullResponseText += chunkText;
-        // リアルタイムでストリーミング（質問候補部分は除外）
-        const cleanChunk = cleanResponseText(fullResponseText);
-        const previousCleanLength = cleanResponseText(fullResponseText.substring(0, fullResponseText.length - chunkText.length)).length;
-        const newCleanChunk = cleanChunk.substring(previousCleanLength);
         
-        if (newCleanChunk) {
-          onStreamChunk(newCleanChunk);
+        // 質問候補マークアップが含まれているかチェック
+        if (fullResponseText.includes('---SUGGESTIONS---')) {
+          // 質問候補マークアップ以前の部分のみを取得
+          const textBeforeSuggestions = fullResponseText.split('---SUGGESTIONS---')[0].trim();
+          
+          // まだ表示されていない部分があれば表示
+          if (textBeforeSuggestions.length > displayedText.length) {
+            const newText = textBeforeSuggestions.substring(displayedText.length);
+            displayedText = textBeforeSuggestions;
+            onStreamChunk(newText);
+          }
+          // 質問候補マークアップが検出されたら、以降のストリーミング表示は停止
+        } else {
+          // 質問候補マークアップがまだない場合は通常通り表示
+          onStreamChunk(chunkText);
+          displayedText += chunkText;
         }
       }
     }
