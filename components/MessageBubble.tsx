@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Message, MessageSender } from '../types';
 import LoadingSpinner from './LoadingSpinner'; // Import LoadingSpinner
 import QuestionSuggestionComponent from './QuestionSuggestion';
@@ -14,6 +14,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   currentBotMessageId, 
   onSuggestionClick 
 }) => {
+  const [isCopied, setIsCopied] = useState(false);
+  
   const isUser = message.sender === MessageSender.USER;
   const isBot = message.sender === MessageSender.BOT;
   const isSystem = message.sender === MessageSender.SYSTEM;
@@ -35,6 +37,22 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     return { __html: formatted };
   };
 
+  const handleCopyText = async () => {
+    try {
+      // HTMLタグを除去してプレーンテキストを取得
+      const plainText = message.text.replace(/<[^>]*>/g, '').replace(/\*\*/g, '').replace(/\*/g, '');
+      await navigator.clipboard.writeText(plainText);
+      setIsCopied(true);
+      
+      // 2秒後にアイコンを元に戻す
+      setTimeout(() => {
+        setIsCopied(false);
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
   const isActiveBotPlaceholder =
     isBot &&
     message.id === currentBotMessageId &&
@@ -44,13 +62,25 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     <div className={wrapperClasses}>
       <div className={bubbleClasses}>
         {isBot && (
-           <div className="flex items-center mb-1">
-            <i className="fas fa-cut text-blue-500 mr-2"></i>
-            <span className="text-xs font-semibold text-blue-600">アシスタント</span>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center">
+              <i className="fas fa-cut text-blue-500 mr-2"></i>
+              <span className="text-xs font-semibold text-blue-600">アシスタント</span>
+            </div>
+            {/* コピーボタン（ローディング中でない場合のみ表示） */}
+            {!isActiveBotPlaceholder && message.text.trim() && (
+              <button
+                onClick={handleCopyText}
+                className="ml-2 p-1 rounded hover:bg-gray-300 transition-colors duration-200"
+                title={isCopied ? 'コピーしました！' : 'テキストをコピー'}
+              >
+                <i className={`fas ${isCopied ? 'fa-check text-green-600' : 'fa-copy text-gray-600'} text-xs`}></i>
+              </button>
+            )}
           </div>
         )}
         {isUser && (
-           <div className="flex items-center justify-end mb-1">
+          <div className="flex items-center justify-end mb-1">
             <span className="text-xs font-semibold text-blue-100 mr-2">あなた</span>
             <i className="fas fa-user text-blue-200"></i>
           </div>
