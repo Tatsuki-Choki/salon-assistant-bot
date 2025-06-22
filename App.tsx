@@ -110,6 +110,9 @@ const App: React.FC = () => {
     setUserInput('');
     setIsLoading(true); // Set loading true
     
+    // 回答出力時にカテゴリを非表示にする
+    setShowCategories(false);
+    
     const botMessageId = `bot-${Date.now()}`;
     setCurrentBotMessageId(botMessageId); // Set current bot message ID
     
@@ -207,7 +210,7 @@ const App: React.FC = () => {
           <div className="px-4 py-3 border-b border-gray-200">
             <div className="flex items-center justify-between">
               {/* カテゴリボタン群 */}
-              <div className="flex flex-wrap justify-center items-center gap-2 flex-1">
+              <div className="flex items-center gap-2 flex-1 overflow-x-auto scrollbar-hide">
                 {CATEGORIES.map(cat => (
                   <CategoryButton 
                     key={cat.id} 
