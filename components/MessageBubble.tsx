@@ -62,21 +62,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     <div className={wrapperClasses}>
       <div className={bubbleClasses}>
         {isBot && (
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center">
-              <i className="fas fa-cut text-blue-500 mr-2"></i>
-              <span className="text-xs font-semibold text-blue-600">アシスタント</span>
-            </div>
-            {/* コピーボタン（ローディング中でない場合のみ表示） */}
-            {!isActiveBotPlaceholder && message.text.trim() && (
-              <button
-                onClick={handleCopyText}
-                className="ml-2 p-1 rounded hover:bg-gray-300 transition-colors duration-200"
-                title={isCopied ? 'コピーしました！' : 'テキストをコピー'}
-              >
-                <i className={`fas ${isCopied ? 'fa-check text-green-600' : 'fa-copy text-gray-600'} text-xs`}></i>
-              </button>
-            )}
+          <div className="flex items-center mb-1">
+            <i className="fas fa-cut text-blue-500 mr-2"></i>
+            <span className="text-xs font-semibold text-blue-600">アシスタント</span>
           </div>
         )}
         {isUser && (
@@ -96,6 +84,24 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               className="text-sm leading-relaxed text-left" 
               dangerouslySetInnerHTML={formatText(message.text)}
             ></p>
+            
+            {/* 回答テキストのコピーボタン（ボットメッセージのみ） */}
+            {isBot && message.text.trim() && (
+              <div className="mt-3 mb-3 text-center">
+                <button
+                  onClick={handleCopyText}
+                  className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    isCopied 
+                      ? 'bg-green-100 text-green-700 border border-green-300' 
+                      : 'bg-blue-50 text-blue-700 border border-blue-300 hover:bg-blue-100'
+                  }`}
+                  title={isCopied ? 'コピーしました！' : '回答のテキストをコピー'}
+                >
+                  <i className={`fas ${isCopied ? 'fa-check' : 'fa-copy'} mr-2`}></i>
+                  {isCopied ? 'コピーしました！' : '回答のテキストをコピー'}
+                </button>
+              </div>
+            )}
             
             {/* 質問候補の表示（ボットメッセージのみ） */}
             {isBot && message.suggestions && message.suggestions.length > 0 && onSuggestionClick && (
